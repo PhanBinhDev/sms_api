@@ -4,6 +4,7 @@ const helmet = require('helmet')
 const cookieParser = require('cookie-parser')
 const cors = require('cors')
 const { loadControllers, scopePerRequest } = require('awilix-express')
+const errorHandlingMiddleware = require('./infrastructure/middlewares/errorHandling')
 require('express-async-errors')
 require('dotenv').config({
   path: __dirname + '/../.env'
@@ -23,7 +24,7 @@ module.exports = async (config) => {
 
   app.use(scopePerRequest(container))
   app.use(loadControllers('./controllers/*Controller.js'))
-
+  app.use(errorHandlingMiddleware)
   return {
     app,
     config
