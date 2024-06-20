@@ -14,5 +14,21 @@
   ],
   "author": "BinhDev",
   "license": "ISC",
-  "dependencies": {}
+  "dependencies": {
+    "awilix": "^4.2.3",
+    "awilix-express": "^3.0.0",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^1.18.3",
+    "config": "^1.29.4",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.16.4",
+    "express-async-errors": "^3.1.1",
+    "helmet": "^3.18.0",
+    "lodash": "^4.17.21",
+    "mongodb": "^5.5.0",
+    "nodemon": "^1.18.10",
+    "uuid": "^3.4.0"
+  }
 }
