@@ -32,6 +32,7 @@ class Database {
     return {
       client,
       database,
+      usersCollection: database.collection('usersCollection'),
       templatesCollection: database.collection('templatesCollection')
     }
   }
@@ -55,9 +56,14 @@ const container = async (configurations) => {
     database: await container.resolve('database')
   })
 
+  const AuthServices = require('./services/AuthServices')({
+    database: await container.resolve('database')
+  })
+
   container.register({
     repository: asValue({
-      TemplateServices
+      TemplateServices,
+      AuthServices
     })
   })
 

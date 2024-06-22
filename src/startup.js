@@ -25,6 +25,7 @@ module.exports = async (config) => {
   app.use(scopePerRequest(container))
   app.use(loadControllers('./controllers/*Controller.js'))
   app.use(errorHandlingMiddleware)
+
   return {
     app,
     config
