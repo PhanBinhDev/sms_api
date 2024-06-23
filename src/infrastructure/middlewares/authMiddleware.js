@@ -17,6 +17,7 @@ module.exports = {
       req.user = decoded
       next()
     } catch (err) {
+      // console.log(err)
       next(new ApiError(StatusCodes.UNAUTHORIZED, new Error(err).message))
     }
   }

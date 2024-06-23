@@ -13,9 +13,17 @@ function AuthController({ repository }) {
   const AuthServices = repository.AuthServices
 
   return {
+    register: async (req, res, next) => {
+      try {
+        const result = await AuthServices.register(req.body)
+
+        return res.status(StatusCodes.CREATED).json(result)
+      } catch (err) {
+        next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
+      }
+    },
     signInWithCredentials: async (req, res, next) => {
       try {
-        console.log('run controller')
         let result = await AuthServices.loginWithCredentials(req.body)
 
         // Save accessToken to cookie
@@ -111,21 +119,71 @@ function AuthController({ repository }) {
       } catch (err) {
         next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
       }
+    },
+    enableTFA: async (req, res, next) => {
+      try {
+        const { _id } = req.user
+        const result = await AuthServices.enableTFA(_id)
+        return res.status(StatusCodes.OK).json(result)
+      } catch (err) {
+        next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
+      }
+    },
+    verifyTFA: async (req, res, next) => {
+      try {
+        const { _id } = req.user
+        const { otpToken } = req.body
+        const result = await AuthServices.verifyTFA(_id, otpToken, 'enable')
+        return res.status(StatusCodes.OK).json(result)
+      } catch (err) {
+        next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
+      }
+    },
+    disableTFA: async (req, res, next) => {
+      try {
+        const { _id } = req.user
+        const { otpToken } = req.body
+        const result = await AuthServices.verifyTFA(_id, otpToken, 'disable')
+        return res.status(StatusCodes.OK).json(result)
+      } catch (err) {
+        next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
+      }
+    },
+    forgotPassword: async (req, res, next) => {
+      try {
+        const { email } = req.body
+        const result = await AuthServices.forgotPassword(email)
+        return res.status(StatusCodes.OK).json(result)
+      } catch (err) {
+        next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
+      }
     }
   }
 }
 
 module.exports = createController(AuthController)
-  .prefix('/api/v1/auth')
-  .post('/sign-in', 'signInWithCredentials', {
+  .prefix('/api/v1/auth/')
+  .post('register', 'register', {
+    before: [authValidations.validateCreateUser]
+  })
+  .post('sign-in', 'signInWithCredentials', {
     before: [authValidations.validateSignInWithCredentials]
   })
-  .post('/sign-out', 'signOut', {
+  .post('sign-out', 'signOut', {
     before: [authMiddleware.isAuthenticated]
   })
-  .post('/refresh-token', 'refreshToken')
-  // Add auth middleware
-  .post('/connect-google', 'connectGoogle')
-  .post('/disconnect-google', 'disconnectGoogle', {
+  .post('refresh-token', 'refreshToken')
+  .post('connect-google', 'connectGoogle')
+  .post('disconnect-google', 'disconnectGoogle', {
     before: [authMiddleware.isAuthenticated]
   })
+  .post('enable-tfa', 'enableTFA', {
+    before: [authMiddleware.isAuthenticated]
+  })
+  .post('verify-tfa', 'verifyTFA', {
+    before: [authMiddleware.isAuthenticated]
+  })
+  .post('disable-tfa', 'disableTFA', {
+    before: [authMiddleware.isAuthenticated]
+  })
+  .post('forgot-password', 'forgotPassword')

@@ -38,20 +38,25 @@ class Database {
   }
 }
 
-const database = new Database(require('../config'))
+const databaseAsync = async (configurations) => {
+  try {
+    const initDB = new Database(configurations)
+    return await initDB.connect()
+  } catch (e) {
+    throw e
+  }
+}
 
 const container = async (configurations) => {
   const container = createContainer()
   // Register database
   container.register({
     database: asFunction(async () => {
-      const db = new Database(configurations)
-      return await db.connect()
+      return await databaseAsync(configurations)
     }).singleton()
   })
 
   // // Define services
-
   const TemplateServices = require('./services/TemplateServices')({
     database: await container.resolve('database')
   })
@@ -72,5 +77,5 @@ const container = async (configurations) => {
 
 module.exports = {
   container,
-  database
+  databaseAsync
 }

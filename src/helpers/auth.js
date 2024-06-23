@@ -2,6 +2,7 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const config = require('../config')
 const { admin } = require('./firebaseAdmin')
+const { databaseAsync } = require('../infrastructure/container')
 function getTokenFromCookies(req, key) {
   if (!key) key = ''
 
@@ -43,7 +44,6 @@ function comparePassword(password, passwordHash) {
 async function verifyAccessTokenGoogleAuth(accessToken) {
   try {
     const decodedToken = await admin.auth().verifyIdToken(accessToken)
-    console.log('decodedToken', decodedToken)
     return {
       display_name: decodedToken.name,
       email: decodedToken.email,
@@ -56,9 +56,30 @@ async function verifyAccessTokenGoogleAuth(accessToken) {
   }
 }
 
+async function checkCodeInUse(code) {
+  console.log(code)
+  try {
+    const database = await databaseAsync(require('../config'))
+
+    const usersCollection = database.usersCollection
+
+    const existUser = await usersCollection.findOne({
+      student_code: code
+    })
+
+    if (existUser) {
+      return true
+    }
+    return false
+  } catch (err) {
+    throw err
+  }
+}
+
 module.exports = {
   getTokenFromCookies,
   verifyToken,
   comparePassword,
-  verifyAccessTokenGoogleAuth
+  verifyAccessTokenGoogleAuth,
+  checkCodeInUse
 }
