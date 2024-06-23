@@ -157,6 +157,15 @@ function AuthController({ repository }) {
       } catch (err) {
         next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
       }
+    },
+    resetPassword: async (req, res, next) => {
+      try {
+        const { token, newPassword } = req.body
+        const result = await AuthServices.resetPassword(token, newPassword)
+        return res.status(StatusCodes.OK).json(result)
+      } catch (err) {
+        next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
+      }
     }
   }
 }
@@ -169,21 +178,24 @@ module.exports = createController(AuthController)
   .post('sign-in', 'signInWithCredentials', {
     before: [authValidations.validateSignInWithCredentials]
   })
-  .post('sign-out', 'signOut', {
+  .delete('sign-out', 'signOut', {
     before: [authMiddleware.isAuthenticated]
   })
   .post('refresh-token', 'refreshToken')
-  .post('connect-google', 'connectGoogle')
-  .post('disconnect-google', 'disconnectGoogle', {
+  .put('connect-google', 'connectGoogle')
+  .put('disconnect-google', 'disconnectGoogle', {
     before: [authMiddleware.isAuthenticated]
   })
-  .post('enable-tfa', 'enableTFA', {
+  .patch('enable-tfa', 'enableTFA', {
     before: [authMiddleware.isAuthenticated]
   })
-  .post('verify-tfa', 'verifyTFA', {
+  .patch('verify-tfa', 'verifyTFA', {
     before: [authMiddleware.isAuthenticated]
   })
-  .post('disable-tfa', 'disableTFA', {
+  .patch('disable-tfa', 'disableTFA', {
     before: [authMiddleware.isAuthenticated]
   })
-  .post('forgot-password', 'forgotPassword')
+  .patch('forgot-password', 'forgotPassword')
+  .patch('reset-password', 'resetPassword', {
+    before: [authValidations.validateResetPassword]
+  })

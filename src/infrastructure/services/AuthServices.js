@@ -94,6 +94,7 @@ module.exports = function ({ config, database }) {
           refreshToken
         }
       } catch (err) {
+        console.log(err)
         throw err
       }
     },
@@ -130,7 +131,6 @@ module.exports = function ({ config, database }) {
 
         const verified = verifyToken(refreshToken, 'refreshToken')
 
-        console.log(verified)
         if (!verified) {
           throw new ApiError(
             StatusCodes.UNAUTHORIZED,
@@ -346,6 +346,19 @@ module.exports = function ({ config, database }) {
         }
 
         const token = generateToken(payload, 'accessToken')
+
+        // save token
+        await usersCollection.updateOne(
+          {
+            _id: new ObjectId(user._id)
+          },
+          {
+            $set: {
+              reset_password_token: token
+            }
+          }
+        )
+
         const url = `${process.env.FRONTEND_URL}/reset-password?token=${token}`
         // Use resend to send mail reset password
 
@@ -386,6 +399,52 @@ module.exports = function ({ config, database }) {
 
         return {
           message: 'Email sent successfully'
+        }
+      } catch (err) {
+        throw err
+      }
+    },
+    resetPassword: async function (token, newPassword) {
+      try {
+        const verified = verifyToken(token, 'accessToken')
+
+        if (!verified) {
+          throw new ApiError(
+            StatusCodes.UNAUTHORIZED,
+            'This link invalid or has been expired'
+          )
+        }
+        const user = await usersCollection.findOne({
+          reset_password_token: token
+        })
+
+        if (!user) {
+          throw new ApiError(StatusCodes.UNAUTHORIZED, 'Invalid token')
+        }
+
+        const { modifiedCount } = await usersCollection.updateOne(
+          {
+            reset_password_token: token
+          },
+          {
+            $set: {
+              password: await bcrypt.hash(newPassword, saltRounds)
+            },
+            $unset: {
+              reset_password_token: 1
+            }
+          }
+        )
+
+        if (modifiedCount === 0) {
+          throw new ApiError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            'Something went wrong. Please try again later'
+          )
+        }
+
+        return {
+          message: 'Reset password successfully'
         }
       } catch (err) {
         throw err
