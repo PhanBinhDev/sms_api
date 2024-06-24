@@ -4,6 +4,7 @@ const { StatusCodes } = require('http-status-codes')
 const ApiError = require('../helpers/ApiError')
 const authMiddleware = require('../infrastructure/middlewares/authMiddleware')
 const _ = require('lodash')
+const ms = require('ms')
 const {
   getTokenFromCookies,
   verifyAccessTokenGoogleAuth
@@ -27,23 +28,50 @@ function AuthController({ repository }) {
       try {
         let result = await AuthServices.loginWithCredentials(req.body)
 
+        if (result?.isTFAEnabled) {
+          return res.status(StatusCodes.OK).json(result)
+        }
+
         // Save accessToken to cookie
         res.cookie('accessToken', result.accessToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
           sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-          maxAge: 1000 * 60 * 15
+          maxAge: ms('1 days')
         })
 
         res.cookie('refreshToken', result.refreshToken, {
           httpOnly: true,
           secure: process.env.NODE_ENV === 'production',
-          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-          maxAge: 1000 * 60 * 60
+          sameSite: process.env.NODE_ENV !== 'production' ? 'none' : 'lax',
+          maxAge: ms('1 days')
         })
 
         result = _.omit(result, ['refreshToken'])
 
+        return res.status(StatusCodes.OK).json(result)
+      } catch (err) {
+        next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
+      }
+    },
+    signInWithGoogle: async (req, res, next) => {
+      try {
+        const { accessToken } = req.body
+
+        if (!accessToken) {
+          throw new ApiError(
+            StatusCodes.UNPROCESSABLE_ENTITY,
+            'Token not available'
+          )
+        }
+
+        const verifiedGoogle = await verifyAccessTokenGoogleAuth(accessToken)
+
+        if (!verifiedGoogle) {
+          throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Something went wrong')
+        }
+
+        const result = await AuthServices.loginWithGoogle(verifiedGoogle)
         return res.status(StatusCodes.OK).json(result)
       } catch (err) {
         next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
@@ -133,8 +161,35 @@ function AuthController({ repository }) {
     verifyTFA: async (req, res, next) => {
       try {
         const { _id } = req.user
-        const { otpToken } = req.body
-        const result = await AuthServices.verifyTFA(_id, otpToken, 'enable')
+        const { otp } = req.query
+        let result = await AuthServices.verifyTFA(_id, otp, 'enable')
+
+        return res.status(StatusCodes.OK).json(result)
+      } catch (err) {
+        next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
+      }
+    },
+    verifyTFASignIn: async (req, res, next) => {
+      try {
+        const { temporaryToken, otp } = req.body
+        let result = await AuthServices.verifyTFASignIn(temporaryToken, otp)
+
+        res.cookie('accessToken', result.accessToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+          maxAge: ms('1 days')
+        })
+
+        res.cookie('refreshToken', result.refreshToken, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: process.env.NODE_ENV !== 'production' ? 'none' : 'lax',
+          maxAge: ms('1 days')
+        })
+
+        result = _.omit(result, ['refreshToken'])
+
         return res.status(StatusCodes.OK).json(result)
       } catch (err) {
         next(new ApiError(StatusCodes.BAD_REQUEST, new Error(err).message))
@@ -183,7 +238,9 @@ module.exports = createController(AuthController)
     before: [authMiddleware.isAuthenticated]
   })
   .post('refresh-token', 'refreshToken')
-  .put('connect-google', 'connectGoogle')
+  .put('connect-google', 'connectGoogle', {
+    before: [authMiddleware.isAuthenticated]
+  })
   .put('disconnect-google', 'disconnectGoogle', {
     before: [authMiddleware.isAuthenticated]
   })
@@ -193,6 +250,7 @@ module.exports = createController(AuthController)
   .patch('verify-tfa', 'verifyTFA', {
     before: [authMiddleware.isAuthenticated]
   })
+  .patch('verify-tfa-sign-in', 'verifyTFASignIn')
   .patch('disable-tfa', 'disableTFA', {
     before: [authMiddleware.isAuthenticated]
   })
