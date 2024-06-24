@@ -27,7 +27,7 @@ function verifyToken(token, type) {
       return false
     }
 
-    return true
+    return decoded
   } catch (err) {
     throw err
   }

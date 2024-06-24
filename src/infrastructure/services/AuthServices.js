@@ -57,6 +57,75 @@ module.exports = function ({ config, database }) {
           throw new ApiError(StatusCodes.UNAUTHORIZED, 'Password is incorrect')
         }
 
+        if (user?.TFA?.enabled) {
+          // handle response to user know need to verify TFA
+          const temporaryPayload = {
+            _id: user._id,
+            email: user.email
+          }
+
+          return {
+            isTFAEnabled: true,
+            temporaryToken: generateToken(temporaryPayload, 'accessToken', {
+              expiresIn: '5m'
+            }),
+            message: 'Need to verify TFA'
+          }
+        }
+
+        const payload = {
+          _id: user._id,
+          email: user.email,
+          student_code: user.student_code,
+          full_name: user.full_name,
+          metadata: user?.metadata ?? {}
+        }
+
+        const accessToken = generateToken(payload, 'accessToken')
+        const refreshToken = generateToken(payload, 'refreshToken')
+
+        // Call Update User By ID
+        const updatedUser = await usersCollection.updateOne(
+          {
+            _id: user._id
+          },
+          {
+            $set: {
+              last_sign_in_date: new Date(),
+              refresh_token: refreshToken
+            }
+          }
+        )
+
+        if (updatedUser.modifiedCount === 0) {
+          throw new ApiError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            'Something went wrong. Please try again later'
+          )
+        }
+
+        return {
+          isTFAEnabled: false,
+          userInfo: payload,
+          accessToken,
+          refreshToken
+        }
+      } catch (err) {
+        console.log(err)
+        throw err
+      }
+    },
+    loginWithGoogle: async function (dataGoogle) {
+      try {
+        const { uid } = dataGoogle
+        const user = await usersCollection.findOne({
+          'metadata.uid': uid
+        })
+
+        if (!user) {
+          throw new ApiError(StatusCodes.NOT_FOUND, 'Could not find user')
+        }
+
         const payload = {
           _id: user._id,
           email: user.email,
@@ -94,7 +163,6 @@ module.exports = function ({ config, database }) {
           refreshToken
         }
       } catch (err) {
-        console.log(err)
         throw err
       }
     },
@@ -252,13 +320,15 @@ module.exports = function ({ config, database }) {
           throw new ApiError(StatusCodes.NOT_FOUND, 'Could not find user')
         }
 
-        const serviceName = 'FPOLY_SMS'
+        const serviceName = `FPOLY_SMS_${user.student_code}`
         const secret = generateUniqueSecret()
 
         const { modifiedCount } = await usersCollection.updateOne(
           { _id: new ObjectId(_id) },
-          { $set: { 'TFA.secret': secret } }
+          { $set: { 'TFA.secret': secret, 'TFA.enabled': false } }
         )
+
+        console.log('modifiedCount', modifiedCount)
 
         if (modifiedCount === 0) {
           throw new ApiError(
@@ -279,11 +349,6 @@ module.exports = function ({ config, database }) {
     },
     verifyTFA: async function (_id, otpToken, type) {
       try {
-        console.log({
-          _id,
-          otpToken,
-          type
-        })
         const user = await usersCollection.findOne({
           _id: new ObjectId(_id)
         })
@@ -291,11 +356,21 @@ module.exports = function ({ config, database }) {
         if (!user) {
           throw new ApiError(StatusCodes.NOT_FOUND, 'Could not find user')
         }
-        console.log(user.TFA.secret)
         const isValid = verifyOTPToken(otpToken, user.TFA.secret)
 
         if (!isValid) {
           throw new ApiError(StatusCodes.UNAUTHORIZED, 'Invalid OTP Token')
+        }
+
+        // type for enable or disable
+        const updateObj = {
+          'TFA.enabled': type === 'enable'
+        }
+
+        if (type === 'disable') {
+          updateObj['$unset'] = {
+            'TFA.secret': true
+          }
         }
 
         const { modifiedCount } = await usersCollection.updateOne(
@@ -303,12 +378,7 @@ module.exports = function ({ config, database }) {
             _id: new ObjectId(_id)
           },
           {
-            $set: {
-              'TFA.enabled': type === 'enable' ? true : false
-            },
-            $unset: {
-              'TFA.secret': type === 'disable' ? true : false
-            }
+            $set: updateObj
           }
         )
 
@@ -323,6 +393,75 @@ module.exports = function ({ config, database }) {
             type === 'enable'
               ? 'Enabled TFA Successfully'
               : 'Disabled TFA Successfully'
+        }
+      } catch (err) {
+        throw err
+      }
+    },
+    verifyTFASignIn: async function (temporaryToken, otp) {
+      try {
+        // verify temporary token
+        const verified = verifyToken(temporaryToken, 'accessToken')
+        if (!verified) {
+          // Case need to Re Login and verify TFA
+          throw new ApiError(
+            StatusCodes.UNAUTHORIZED,
+            'Invalid temporary token or has been expired'
+          )
+        }
+
+        // verify TFA
+
+        const user = await usersCollection.findOne({
+          _id: new ObjectId(verified._id)
+        })
+
+        if (!user) {
+          throw new ApiError(StatusCodes.NOT_FOUND, 'Could not find user')
+        }
+
+        const isValid = verifyOTPToken(otp, user.TFA.secret)
+
+        if (!isValid) {
+          throw new ApiError(StatusCodes.UNAUTHORIZED, 'Invalid OTP Token')
+        }
+
+        const payload = {
+          _id: user._id,
+          email: user.email,
+          student_code: user.student_code,
+          full_name: user.full_name,
+          metadata: user?.metadata ?? {}
+        }
+
+        const accessToken = generateToken(payload, 'accessToken')
+        const refreshToken = generateToken(payload, 'refreshToken')
+
+        // Call Update User By ID
+        const updatedUser = await usersCollection.updateOne(
+          {
+            _id: user._id
+          },
+          {
+            $set: {
+              last_sign_in_date: new Date(),
+              refresh_token: refreshToken
+            }
+          }
+        )
+
+        if (updatedUser.modifiedCount === 0) {
+          throw new ApiError(
+            StatusCodes.INTERNAL_SERVER_ERROR,
+            'Something went wrong. Please try again later'
+          )
+        }
+
+        return {
+          isTFAEnabled: true,
+          userInfo: payload,
+          accessToken,
+          refreshToken
         }
       } catch (err) {
         throw err
