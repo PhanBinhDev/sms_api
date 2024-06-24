@@ -1,7 +1,6 @@
 const Joi = require('joi')
 const { StatusCodes } = require('http-status-codes')
 const ApiError = require('../helpers/ApiError')
-const { generateUniqueSecret } = require('../helpers/tfa')
 const { checkCodeInUse } = require('../helpers/auth')
 
 const schemaSignInWithCredentials = Joi.object({
@@ -158,6 +157,58 @@ const schemaResetPassword = Joi.object({
         'Mật khẩu phải có ít nhất 6 ký tự, bao gồm chữ thường, chữ hoa và số'
     })
 })
+
+const schemaUpdateUser = Joi.object({
+  full_name: Joi.string().messages({
+    'string.empty': 'Họ và tên không được để trống'
+  }),
+  age: Joi.number()
+    .integer() // Kiểm tra tuổi là số nguyên
+    .min(1) // Tuổi phải lớn hơn hoặc bằng 1
+    .max(150) // Tuổi phải nhỏ hơn hoặc bằng 150
+    .messages({
+      'number.base': 'Tuổi phải là số',
+      'number.integer': 'Tuổi phải là số nguyên',
+      'number.min': 'Tuổi phải lớn hơn hoặc bằng 1',
+      'number.max': 'Tuổi phải nhỏ hơn hoặc bằng 150'
+    }),
+  gender: Joi.string()
+    .valid('Nam', 'Nữ', 'Khác') // Kiểm tra giới tính hợp lệ
+    .messages({
+      'string.empty': 'Giới tính không được để trống',
+      'any.only': 'Giới tính không hợp lệ'
+    }),
+  address: Joi.string().messages({
+    'string.empty': 'Địa chỉ không được để trống'
+  }),
+  date_of_birth: Joi.date().messages({
+    'date.base': 'Ngày sinh phải là ngày hợp lệ'
+  }),
+  status: Joi.string()
+    .valid('Pending', 'Active', 'Completed') // Kiểm tra trạng thái hợp lệ
+    .messages({
+      'string.empty': 'Trạng thái không được để trống',
+      'any.only': 'Trạng thái không hợp lệ'
+    }),
+  metadata: Joi.object({
+    provider: Joi.string().valid('Google', 'Github').required().messages({
+      'any.only': 'Provider không hợp lệ',
+      'any.required': 'Provider là bắt buộc'
+    }),
+    provider_id: Joi.string().required(),
+    display_name: Joi.string().required(),
+    photo_url: Joi.string().required(),
+    uid: Joi.string().required()
+  }).default({}),
+  TFA: Joi.object({
+    secret: Joi.string().messages({
+      'any.required': 'Secret là bắt buộc'
+    }),
+    enabled: Joi.boolean().default(false).messages({
+      'any.required': 'Enabled là bắt buộc'
+    })
+  })
+})
 module.exports = {
   validateSignInWithCredentials: async (req, res, next) => {
     try {
@@ -195,6 +246,18 @@ module.exports = {
           abortEarly: false
         }
       )
+      next()
+    } catch (err) {
+      next(
+        new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(err).message)
+      )
+    }
+  },
+  validateUpdateUser: async (req, res, next) => {
+    try {
+      await schemaUpdateUser.validateAsync(req.body, {
+        abortEarly: false
+      })
       next()
     } catch (err) {
       next(
