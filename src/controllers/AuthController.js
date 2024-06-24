@@ -13,6 +13,7 @@ function AuthController({ repository }) {
   const AuthServices = repository.AuthServices
 
   return {
+    // Auth
     register: async (req, res, next) => {
       try {
         const result = await AuthServices.register(req.body)
