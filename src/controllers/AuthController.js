@@ -1,14 +1,14 @@
+const ms = require('ms')
+const _ = require('lodash')
 const { createController } = require('awilix-express')
-const authValidations = require('../validations/authValidation')
 const { StatusCodes } = require('http-status-codes')
 const ApiError = require('../helpers/ApiError')
-const authMiddleware = require('../infrastructure/middlewares/authMiddleware')
-const _ = require('lodash')
-const ms = require('ms')
 const {
   getTokenFromCookies,
   verifyAccessTokenGoogleAuth
 } = require('../helpers/auth')
+const authValidations = require('../validations/authValidation')
+const authMiddleware = require('../infrastructure/middlewares/authMiddleware')
 
 function AuthController({ repository }) {
   const AuthServices = repository.AuthServices
@@ -237,9 +237,9 @@ module.exports = createController(AuthController)
   .delete('sign-out', 'signOut', {
     before: [authMiddleware.isAuthenticated]
   })
-  .post('refresh-token', 'refreshToken')
+  .put('refresh-token', 'refreshToken')
   .put('connect-google', 'connectGoogle', {
-    before: [authMiddleware.isAuthenticated]
+    // before: [authMiddleware.isAuthenticated]
   })
   .put('disconnect-google', 'disconnectGoogle', {
     before: [authMiddleware.isAuthenticated]

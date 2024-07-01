@@ -56,18 +56,26 @@ async function verifyAccessTokenGoogleAuth(accessToken) {
   }
 }
 
-async function checkCodeInUse(code) {
-  console.log(code)
+async function checkCodeInUse(code, collectionName, fieldName) {
   try {
     const database = await databaseAsync(require('../config'))
+    const collection = database[collectionName]
 
-    const usersCollection = database.usersCollection
+    // Kiểm tra xem fieldName có tồn tại và code đã tồn tại hay chưa trong một lần findOne()
+    const existDocument = await collection.findOne(
+      { [fieldName]: code },
+      { projection: { [fieldName]: 1 } }
+    )
 
-    const existUser = await usersCollection.findOne({
-      student_code: code
-    })
+    // Kiểm tra xem fieldName có tồn tại hay không
+    if (existDocument === null) {
+      throw new Error(
+        `Field "${fieldName}" not found in the "${collectionName}"`
+      )
+    }
 
-    if (existUser) {
+    // Kiểm tra xem code đã tồn tại hay chưa
+    if (existDocument) {
       return true
     }
     return false

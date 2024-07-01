@@ -32,7 +32,11 @@ class Database {
     return {
       client,
       database,
-      usersCollection: database.collection('usersCollection')
+      usersCollection: database.collection('usersCollection'),
+      rolesPermissionCollection: database.collection(
+        'rolesPermissionCollection'
+      ),
+      subjectsCollection: database.collection('subjectsCollection')
     }
   }
 }
@@ -64,10 +68,17 @@ const container = async (configurations) => {
     database: await container.resolve('database')
   })
 
+  const SubjectServices = require('./services/SubjectServices')({
+    database: await container.resolve('database')
+  })
+
+  
+
   container.register({
     repository: asValue({
       UserServices,
-      AuthServices
+      AuthServices,
+      SubjectServices
     })
   })
 
