@@ -82,8 +82,11 @@ const schemaCreateUser = Joi.object({
       'string.pattern.base': 'Mã sinh viên không hợp lệ'
     })
     .external(async (student_code) => {
-      const isCodeInUse = await checkCodeInUse(student_code)
-      console.log(isCodeInUse)
+      const isCodeInUse = await checkCodeInUse(
+        student_code,
+        'usersCollection',
+        'student_code'
+      )
       if (isCodeInUse) {
         throw new ApiError(StatusCodes.CONFLICT, 'Mã sinh viên đã tồn tại')
       }

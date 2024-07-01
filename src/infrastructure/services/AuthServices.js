@@ -111,7 +111,6 @@ module.exports = function ({ config, database }) {
           refreshToken
         }
       } catch (err) {
-        console.log(err)
         throw err
       }
     },
@@ -295,6 +294,9 @@ module.exports = function ({ config, database }) {
           {
             $unset: {
               metadata: 1
+            },
+            $set: {
+              updated_at: new Date()
             }
           }
         )
@@ -567,7 +569,8 @@ module.exports = function ({ config, database }) {
           },
           {
             $set: {
-              password: await bcrypt.hash(newPassword, saltRounds)
+              password: await bcrypt.hash(newPassword, saltRounds),
+              updated_at: new Date()
             },
             $unset: {
               reset_password_token: 1

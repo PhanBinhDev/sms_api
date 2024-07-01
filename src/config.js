@@ -30,7 +30,12 @@ const config = {
       if (!origin || allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true)
       } else {
-        callback(new Error('Không cho phép nguồn gốc'))
+        return callback(
+          new ApiError(
+            StatusCodes.FORBIDDEN,
+            `${origin} not allowed by our CORS Policy.`
+          )
+        )
       }
     },
     credentials: true,
