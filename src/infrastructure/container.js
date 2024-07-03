@@ -33,10 +33,17 @@ class Database {
       client,
       database,
       usersCollection: database.collection('usersCollection'),
-      rolesPermissionCollection: database.collection(
-        'rolesPermissionCollection'
+      // Save subjects collection
+      subjectsCollection: database.collection('subjectsCollection'),
+
+      // Save url path
+      resourcesCollection: database.collection('resourcesCollection'),
+      // Save group permissions like admin, members...
+      permissionGroupsCollection: database.collection(
+        'permissionGroupsCollection'
       ),
-      subjectsCollection: database.collection('subjectsCollection')
+      // Save permission group and resource relationship
+      groupResourceCollection: database.collection('groupResourceCollection')
     }
   }
 }
@@ -71,8 +78,6 @@ const container = async (configurations) => {
   const SubjectServices = require('./services/SubjectServices')({
     database: await container.resolve('database')
   })
-
-  
 
   container.register({
     repository: asValue({
