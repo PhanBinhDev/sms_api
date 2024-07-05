@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const config = require('../config')
 const { admin } = require('./firebaseAdmin')
-const { databaseAsync } = require('../infrastructure/container')
+const { databaseAsync, container } = require('../infrastructure/container')
 function getTokenFromCookies(req, key) {
   if (!key) key = ''
 
@@ -58,7 +58,8 @@ async function verifyAccessTokenGoogleAuth(accessToken) {
 
 async function checkCodeInUse(code, collectionName, fieldName) {
   try {
-    const database = await databaseAsync(require('../config'))
+    const dbContainer = await container(require('../config'))
+    const database = await dbContainer.resolve('database')
     const collection = database[collectionName]
 
     // Kiểm tra xem fieldName có tồn tại và code đã tồn tại hay chưa trong một lần findOne()

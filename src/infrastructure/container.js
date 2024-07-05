@@ -33,10 +33,17 @@ class Database {
       client,
       database,
       usersCollection: database.collection('usersCollection'),
-      rolesPermissionCollection: database.collection(
-        'rolesPermissionCollection'
+      // Save subjects collection
+      subjectsCollection: database.collection('subjectsCollection'),
+
+      // Save url path
+      resourcesCollection: database.collection('resourcesCollection'),
+      // Save group permissions like admin, members...
+      permissionGroupsCollection: database.collection(
+        'permissionGroupsCollection'
       ),
-      subjectsCollection: database.collection('subjectsCollection')
+      // Save permission group and resource relationship
+      groupResourceCollection: database.collection('groupResourceCollection')
     }
   }
 }
@@ -52,10 +59,13 @@ const databaseAsync = async (configurations) => {
 
 const container = async (configurations) => {
   const container = createContainer()
+
+  // const client = await
   // Register database
   container.register({
     database: asFunction(async () => {
-      return await databaseAsync(configurations)
+      const initDB = new Database(configurations)
+      return await initDB.connect()
     }).singleton()
   })
 
@@ -72,13 +82,17 @@ const container = async (configurations) => {
     database: await container.resolve('database')
   })
 
-  
+  const PermissionAndResourceServices =
+    require('./services/PermissionAndResourceServices')({
+      database: await container.resolve('database')
+    })
 
   container.register({
     repository: asValue({
       UserServices,
       AuthServices,
-      SubjectServices
+      SubjectServices,
+      PermissionAndResourceServices
     })
   })
 
