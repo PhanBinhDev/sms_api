@@ -60,31 +60,50 @@ const databaseAsync = async (configurations) => {
 const container = async (configurations) => {
   const container = createContainer()
 
-  // const client = await
-  // Register database
-  container.register({
-    database: asFunction(async () => {
-      const initDB = new Database(configurations)
-      return await initDB.connect()
-    }).singleton()
+  const client = await MongoClient.connect(configurations.mongoDB.uri, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
   })
+
+  // Define db name with config
+  const initDB = client.db(configurations.mongoDB.database)
+
+  try {
+    await initDB.command({ ping: 1 })
+    console.log(
+      'Pinged your deployment. You successfully connected to MongoDB!'
+    )
+  } catch (e) {
+    console.error('Error pinging MongoDB:', e)
+  }
+
+  // Define collection
+  const database = {
+    client,
+    database: initDB,
+    usersCollection: initDB.collection('usersCollection'),
+    subjectsCollection: initDB.collection('subjectsCollection'),
+    resourcesCollection: initDB.collection('resourcesCollection'),
+    permissionGroupsCollection: initDB.collection('permissionGroupsCollection'),
+    groupResourceCollection: initDB.collection('groupResourceCollection')
+  }
 
   // // Define services
   const UserServices = require('./services/UserServices')({
-    database: await container.resolve('database')
+    database
   })
 
   const AuthServices = require('./services/AuthServices')({
-    database: await container.resolve('database')
+    database
   })
 
   const SubjectServices = require('./services/SubjectServices')({
-    database: await container.resolve('database')
+    database
   })
 
   const PermissionAndResourceServices =
     require('./services/PermissionAndResourceServices')({
-      database: await container.resolve('database')
+      database
     })
 
   container.register({
@@ -93,13 +112,20 @@ const container = async (configurations) => {
       AuthServices,
       SubjectServices,
       PermissionAndResourceServices
-    })
+    }),
+    database: asValue(database)
   })
 
   return container
 }
 
+const getDatabase = async (configurations) => {
+  const container = await container(configurations)
+  return container.resolve('database')
+}
+
 module.exports = {
   container,
-  databaseAsync
+  databaseAsync,
+  getDatabase
 }

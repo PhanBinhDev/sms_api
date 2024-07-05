@@ -1,8 +1,8 @@
 const { StatusCodes } = require('http-status-codes')
 const ApiError = require('../../helpers/ApiError')
 const jwt = require('jsonwebtoken')
-const { databaseAsync, globalDatabase } = require('../container')
 const PermissionAndResourceServices = require('../services/PermissionAndResourceServices')
+const container = require('../../runContainer')
 
 module.exports = {
   isAuthenticated: (req, res, next) => {
@@ -31,9 +31,7 @@ module.exports = {
     }
   },
   checkPermission: async (req, res, next) => {
-    console.log('run', globalDatabase)
-
-    const database = await databaseAsync(require('../../config'))
+    const database = (await container).resolve('database')
     const services = PermissionAndResourceServices({
       database
     })
@@ -45,12 +43,12 @@ module.exports = {
     const hasPermission = result.resources.some(
       (item) => resource.startsWith(item.url) && item.method === method
     )
-    // if (!hasPermission) {
-    //   throw new ApiError(
-    //     StatusCodes.FORBIDDEN,
-    //     'Forbidden (You do not have permission to access this resource)'
-    //   )
-    // }
+    if (!hasPermission) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'Forbidden (You do not have permission to access this resource)'
+      )
+    }
     next()
   }
 }
