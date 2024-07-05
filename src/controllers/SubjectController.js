@@ -59,7 +59,6 @@ function SubjectController({ repository }) {
     updateSubject: async (req, res, next) => {
       try {
         const { id } = req.params
-        console.log(Object.keys(req.body))
         if (Object.keys(req.body).length === 0) {
           throw new ApiError(StatusCodes.NO_CONTENT, 'Nothing to update')
         }

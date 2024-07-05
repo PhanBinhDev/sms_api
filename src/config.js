@@ -43,7 +43,8 @@ const config = {
     preflightContinue: false,
     optionsSuccessStatus: 204,
     maxAge: 86400
-  }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD']
 }
 
 module.exports = config

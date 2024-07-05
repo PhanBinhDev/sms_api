@@ -1,6 +1,8 @@
 const { StatusCodes } = require('http-status-codes')
 const ApiError = require('../../helpers/ApiError')
 const jwt = require('jsonwebtoken')
+const { databaseAsync, globalDatabase } = require('../container')
+const PermissionAndResourceServices = require('../services/PermissionAndResourceServices')
 
 module.exports = {
   isAuthenticated: (req, res, next) => {
@@ -27,5 +29,28 @@ module.exports = {
         message: 'Unauthorized (Invalid token). Please login'
       })
     }
+  },
+  checkPermission: async (req, res, next) => {
+    console.log('run', globalDatabase)
+
+    const database = await databaseAsync(require('../../config'))
+    const services = PermissionAndResourceServices({
+      database
+    })
+    const { group_id } = req.user ?? {}
+    const originalUrl = req.originalUrl
+    const resource = originalUrl.split('/api/v1')[1]
+    const method = req.method.toUpperCase()
+    const result = await services.getInfoPermissionGroupResource(group_id)
+    const hasPermission = result.resources.some(
+      (item) => resource.startsWith(item.url) && item.method === method
+    )
+    // if (!hasPermission) {
+    //   throw new ApiError(
+    //     StatusCodes.FORBIDDEN,
+    //     'Forbidden (You do not have permission to access this resource)'
+    //   )
+    // }
+    next()
   }
 }

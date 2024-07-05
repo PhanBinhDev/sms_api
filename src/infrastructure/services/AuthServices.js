@@ -57,27 +57,28 @@ module.exports = function ({ config, database }) {
           throw new ApiError(StatusCodes.UNAUTHORIZED, 'Password is incorrect')
         }
 
-        if (user?.TFA?.enabled) {
-          // handle response to user know need to verify TFA
-          const temporaryPayload = {
-            _id: user._id,
-            email: user.email
-          }
+        // if (user?.TFA?.enabled) {
+        //   // handle response to user know need to verify TFA
+        //   const temporaryPayload = {
+        //     _id: user._id,
+        //     email: user.email
+        //   }
 
-          return {
-            isTFAEnabled: true,
-            temporaryToken: generateToken(temporaryPayload, 'accessToken', {
-              expiresIn: '5m'
-            }),
-            message: 'Need to verify TFA'
-          }
-        }
+        //   return {
+        //     isTFAEnabled: true,
+        //     temporaryToken: generateToken(temporaryPayload, 'accessToken', {
+        //       expiresIn: '5m'
+        //     }),
+        //     message: 'Need to verify TFA'
+        //   }
+        // }
 
         const payload = {
           _id: user._id,
           email: user.email,
           student_code: user.student_code,
           full_name: user.full_name,
+          group_id: user.group_id,
           metadata: user?.metadata ?? {}
         }
 

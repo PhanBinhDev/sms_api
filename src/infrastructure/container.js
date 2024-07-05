@@ -59,10 +59,13 @@ const databaseAsync = async (configurations) => {
 
 const container = async (configurations) => {
   const container = createContainer()
+
+  // const client = await
   // Register database
   container.register({
     database: asFunction(async () => {
-      return await databaseAsync(configurations)
+      const initDB = new Database(configurations)
+      return await initDB.connect()
     }).singleton()
   })
 
@@ -79,11 +82,17 @@ const container = async (configurations) => {
     database: await container.resolve('database')
   })
 
+  const PermissionAndResourceServices =
+    require('./services/PermissionAndResourceServices')({
+      database: await container.resolve('database')
+    })
+
   container.register({
     repository: asValue({
       UserServices,
       AuthServices,
-      SubjectServices
+      SubjectServices,
+      PermissionAndResourceServices
     })
   })
 
