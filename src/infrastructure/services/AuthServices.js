@@ -12,10 +12,13 @@ const {
   generateQRCode,
   verifyOTPToken
 } = require('../../helpers/tfa')
+const { ROLES } = require('../../helpers/constants')
 const saltRounds = 10
 
-module.exports = function ({ config, database }) {
-  const usersCollection = database.usersCollection
+module.exports = async function () {
+  const container = await require('../container')
+  const database = container.resolve('database')
+  const { usersCollection } = database
   return {
     register: async function (data) {
       data.metadata = {}
@@ -24,6 +27,7 @@ module.exports = function ({ config, database }) {
         enabled: false,
         secret: ''
       }
+      data.group_id = data.role ?? ROLES.STUDENT
       const { insertedCount } = await usersCollection.insertOne(data)
 
       if (insertedCount === 0) {

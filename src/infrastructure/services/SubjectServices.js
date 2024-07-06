@@ -3,8 +3,10 @@ const _ = require('lodash')
 const { ObjectId } = require('mongodb')
 const ApiError = require('../../helpers/ApiError')
 
-module.exports = function ({ config, database }) {
-  const subjectsCollection = database.subjectsCollection
+module.exports = async function () {
+  const container = await require('../container')
+  const database = container.resolve('database')
+  const { subjectsCollection } = database
   return {
     createSubject: async function (data) {
       try {

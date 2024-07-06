@@ -26,7 +26,7 @@ module.exports = async (config) => {
   app.use(bodyParser.json({ limit: '1mb' }))
   app.use(bodyParser.urlencoded({ limit: '1mb', extended: false }))
   app.use(limiter)
-  const container = await require('./runContainer')
+  const container = await require('./infrastructure/container')
   app.use(scopePerRequest(container))
   app.use(loadControllers('./controllers/*Controller.js'))
   app.use(errorHandlingMiddleware)

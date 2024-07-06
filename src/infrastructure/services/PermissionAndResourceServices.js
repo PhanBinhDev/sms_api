@@ -5,7 +5,9 @@ const _ = require('lodash')
 const { StatusCodes } = require('http-status-codes')
 const { ObjectId, MongoErr } = require('mongodb')
 const { isValidObjectId } = require('../../helpers/mongodb')
-module.exports = function ({ config, database }) {
+module.exports = async function () {
+  const container = await require('../container')
+  const database = container.resolve('database')
   const {
     resourcesCollection,
     permissionGroupsCollection,
